@@ -1,0 +1,88 @@
+---
+- name: Installing required software for Jenkins
+  hosts: main
+  become: yes
+
+
+  tasks:
+  - name:
+    apt:
+      update_cache: yes
+  - name: Installing jdk
+    apt:
+      name: openjdk-11-jre
+      install_recommends: yes
+  - name: Download jenkins key
+    apt_key:
+      url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
+      state: present
+  - name: Downloading jenkins repo
+    apt_repository:
+      repo: deb https://pkg.jenkins.io/debian-stable binary/ 
+      filename: jenkins
+      state: present
+  - name: Installing jenkins
+    apt:
+      name: jenkins
+      update_cache: yes
+  
+  - name: Installing packages for kubectl and docker
+    apt:
+      name: "{{item}}"
+    loop:
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+  - name: Downloading key
+    apt_key:
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      keyring: /etc/apt/keyrings/kubernetes-archive-keyring.gpg
+      state: present
+  - name: Kubernetes repo
+    apt_repository:
+      repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main"
+      filename: kubernetes
+      state: present
+  - name: Installing kubectl
+    apt:
+      name: kubectl
+      update_cache: yes
+  
+  - name: Downloading key
+    apt_key:
+      url: https://download.docker.com/linux/ubuntu/gpg
+      state: present
+  - name: Docker repo
+    apt_repository:
+      repo: "deb https://download.docker.com/linux/ubuntu jammy stable"
+      state: present
+  - name: Installing Docker
+    apt:
+      name: "{{item}}"
+      update_cache: yes
+    loop:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+  - name: Ensure the services are enabled
+    systemd:
+      name: "{{item}}"
+      state: started
+      enabled: yes
+    loop:
+      - docker
+      - jenkins
+  - name: Permissions
+    user:
+      name: "{{item}}"
+      shell: /bin/bash
+      groups: docker
+      append: yes
+    loop:
+      - jenkins
+  - name: Reloading docker group
+    shell: newgrp docker
+
+    

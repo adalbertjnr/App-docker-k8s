@@ -1,0 +1,82 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres
+        ports: 
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          valueFrom:
+              secretKeyRef:
+                name: secret-postgres
+                key: app-news-database
+        - name: POSTGRES_USER
+          valueFrom: 
+              secretKeyRef:
+                name: secret-postgres
+                key: app-news-username
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+              secretKeyRef:
+                name: secret-postgres
+                key: app-news-password
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-news-dp
+  labels:
+    app: app-news
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: app-news
+  template:
+    metadata:
+      labels:
+        app: app-news
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+      - name: app-news
+        image: szadhub/app-news:{{TAG}}
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DB_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: secret-app-news
+              key: app-news-database
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: secret-app-news
+              key: app-news-username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: secret-app-news
+              key:  app-news-password
+        - name: DB_HOST
+          value: postgres
+
+
